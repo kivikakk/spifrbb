@@ -28,6 +28,7 @@ object Stackyem {
 class Stackyem(
     imemInit: Seq[Data] = Stackyem.DEFAULT_IMEM_INIT,
     stackSize: Int = 32,
+    uartBufferSize: Int = 8,
 ) extends Module {
   if (imemInit.length < 2)
     // Otherwise we can't construct a PC and things get weird.
@@ -42,7 +43,7 @@ class Stackyem(
 
   val io = IO(new Bundle {
     val uartTx = Decoupled(UInt(8.W))
-    val uartRx = Flipped(Irrevocable(new RXOut))
+    val uartRx = Flipped(Decoupled(new RXOut))
   })
 
   val debugIo = IO(new Bundle {
@@ -61,10 +62,17 @@ class Stackyem(
   private val sp = RegInit(0.U(unsignedBitLength(stackSize - 1).W))
   debugIo.sp := sp
 
-  private val rx = Queue.irrevocable(io.uartRx, 32, useSyncReadMem = true)
+  private val rx =
+    Queue.irrevocable(io.uartRx, uartBufferSize, useSyncReadMem = true)
 
-  io.uartTx.bits  := 0.U
-  io.uartTx.valid := false.B
+  // I feel sure there's a shorthand for this ...
+  private val tx = Module(
+    new Queue(UInt(8.W), uartBufferSize, useSyncReadMem = true),
+  )
+  io.uartTx :<>= tx.io.deq
+
+  tx.io.enq.bits  := 0.U
+  tx.io.enq.valid := false.B
   rx.ready        := false.B
 
   object State extends ChiselEnum {
@@ -79,8 +87,8 @@ class Stackyem(
       when(el === Instruction.ReadUart) {
         state := State.sReadUart
       }.elsewhen(el === Instruction.WriteUart) {
-        io.uartTx.bits  := stack(sp - 1.U)
-        io.uartTx.valid := true.B
+        tx.io.enq.bits  := stack(sp - 1.U)
+        tx.io.enq.valid := true.B
         sp              := sp - 1.U
       }.elsewhen(el === Instruction.Dup) {
         stack(sp) := stack(sp - 1.U)

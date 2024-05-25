@@ -75,15 +75,24 @@ class StackyemSpec extends AnyFlatSpec {
       c.clock.step()
       c.debugIo.pc.expect(2, "pc adv")
       c.debugIo.sp.expect(1, "sp adv")
-      c.debugIo.stack(0).expect(0x45)
-      // Stackyem doesn't do any buffering of its UART itself, so this gets set
-      // immediately (combinationally).
-      c.io.uartTx.bits.expect(0x45)
-      c.io.uartTx.valid.expect(1)
+      c.debugIo.stack(0).expect(0x45, "stack set")
+      c.io.uartTx.bits.expect(0, "uart tx bits wait")
+      c.io.uartTx.valid.expect(0, "uart tx valid wait")
 
       c.clock.step()
-      c.io.uartTx.bits.expect(0)
-      c.io.uartTx.valid.expect(0)
+      c.io.uartTx.bits.expect(0x45, "uart tx bits set")
+      c.io.uartTx.valid.expect(1, "uart tx valid set")
+
+      c.clock.step()
+      c.io.uartTx.bits.expect(0x45, "uart tx bits still set")
+      c.io.uartTx.valid.expect(1, "uart tx valid still set")
+
+      c.io.uartTx.ready.poke(true)
+
+      c.clock.step()
+      c.io.uartTx.ready.poke(false)
+      c.io.uartTx.bits.expect(0, "uart tx bits reset")
+      c.io.uartTx.valid.expect(0, "uart tx valid reset")
     }
   }
 }

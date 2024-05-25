@@ -12,6 +12,8 @@ import ee.hrzn.chryse.platform.ice40.IceBreakerPlatform
 import uart.UART
 import stackyem.Stackyem
 
+// TODO: learn more about how to use Irrevocable right.
+
 class Top(implicit platform: Platform) extends Module {
   override def desiredName = "spifrbb"
 
