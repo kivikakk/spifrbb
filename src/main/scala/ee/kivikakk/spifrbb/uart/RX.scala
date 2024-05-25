@@ -32,8 +32,6 @@ class RX(private val divisor: Int) extends Module {
   //       ^-- timer hits 0, counterReg 8->7
   //                                       ^-- 0->-1. Finish @ half STOP bit.
 
-  // TODO: this is still backwards. Same with TX.
-
   // Reset valid when "consumed".
   when(io.ready) {
     validReg := false.B
@@ -52,7 +50,8 @@ class RX(private val divisor: Int) extends Module {
       when(timerReg === 0.U) {
         timerReg   := (divisor - 1).U
         counterReg := counterReg - 1.U
-        shiftReg   := shiftReg(8, 0) ## syncedPin
+        // LSB first.
+        shiftReg := syncedPin ## shiftReg(9, 1)
 
         when(counterReg === 0.U) {
           state := State.sFinish
@@ -64,7 +63,7 @@ class RX(private val divisor: Int) extends Module {
         validReg     := true.B
         bitsReg.byte := shiftReg(8, 1)
         // START high or STOP low.
-        bitsReg.err := shiftReg(9) | ~shiftReg(0)
+        bitsReg.err := shiftReg(0) | ~shiftReg(1)
       }
       state := State.sIdle
     }

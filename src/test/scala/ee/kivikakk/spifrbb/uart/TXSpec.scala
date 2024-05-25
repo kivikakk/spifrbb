@@ -17,7 +17,7 @@ class TXSpec extends AnyFlatSpec {
       c.clock.step()
       c.reset.poke(false.B)
 
-      c.io.bits.poke("b10101100".U)
+      c.io.bits.poke("b00110101".U)
       c.io.valid.poke(true.B)
 
       c.pin.expect(true.B)

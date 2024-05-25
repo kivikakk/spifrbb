@@ -44,7 +44,7 @@ class RXSpec extends AnyFlatSpec {
       pokeBits(c, Seq(0, 1, 0, 1, 0, 1, 1, 0, 0, 1))
 
       c.io.valid.expect(true.B)
-      c.io.bits.byte.expect("b10101100".U)
+      c.io.bits.byte.expect("b00110101".U)
       c.io.bits.err.expect(false.B)
 
       c.clock.step()
@@ -61,7 +61,7 @@ class RXSpec extends AnyFlatSpec {
       pokeBits(c, Seq(1, 1, 0, 1, 0, 1, 1, 0, 0, 1), forceStart = true)
 
       c.io.valid.expect(true.B)
-      c.io.bits.byte.expect("b10101100".U)
+      c.io.bits.byte.expect("b00110101".U)
       c.io.bits.err.expect(true.B)
     }
   }

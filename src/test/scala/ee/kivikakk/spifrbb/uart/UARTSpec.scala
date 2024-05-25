@@ -31,7 +31,7 @@ class UARTSpec extends AnyFlatSpec {
       // Generate a byte and play it out. Ensure we remain not `rdy`.
       val input = (new scala.util.Random).nextInt(256)
       for {
-        bitIx <- 7 to 0 by -1
+        bitIx <- 0 until 8
         i     <- 0 until 3
       } {
         c.pins.rx.poke(((input & (1 << bitIx)) != 0).B)
@@ -86,7 +86,7 @@ class UARTSpec extends AnyFlatSpec {
 
       // Check for each bit in turn.
       for {
-        bitIx <- 7 to 0 by -1
+        bitIx <- 0 until 8
         i     <- 0 until 3
       } {
         c.clock.step()

@@ -25,17 +25,17 @@ class TX(private val divisor: Int) extends Module {
       when(io.valid) {
         timerReg   := (divisor - 1).U
         counterReg := 9.U
-        shiftReg   := 0.U(1.W) ## io.bits ## 1.U(1.W)
+        shiftReg   := 1.U(1.W) ## io.bits ## 0.U(1.W)
         state      := State.sTx
       }
     }
     is(State.sTx) {
-      pin      := shiftReg(9)
+      pin      := shiftReg(0)
       timerReg := timerReg - 1.U // TODO: cheaper here or top level?
       when(timerReg === 0.U) {
         timerReg   := (divisor - 1).U
         counterReg := counterReg - 1.U
-        shiftReg   := shiftReg(8, 0) ## 0.U(1.W)
+        shiftReg   := 0.U(1.W) ## shiftReg(9, 1)
         when(counterReg === 0.U) {
           state := State.sIdle
         }
