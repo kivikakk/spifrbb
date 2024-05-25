@@ -3,10 +3,10 @@
 #include <iostream>
 
 #include <cxxrtl/cxxrtl_vcd.h>
-#include <newproject.h>
+#include <spifrbb.h>
 
 int main(int argc, char **argv) {
-  cxxrtl_design::p_newproject top;
+  cxxrtl_design::p_spifrbb top;
   debug_items di;
   top.debug_info(&di, nullptr, "top ");
 

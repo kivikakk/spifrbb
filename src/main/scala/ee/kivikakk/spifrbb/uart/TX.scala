@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 
 class TX(private val divisor: Int) extends Module {
-  val io  = IO(Flipped(Decoupled(UInt(8.W))))
+  val io  = IO(Flipped(Irrevocable(UInt(8.W))))
   val pin = IO(Output(Bool()))
 
   object State extends ChiselEnum {
