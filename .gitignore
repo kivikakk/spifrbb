@@ -1,0 +1,13 @@
+build/
+*.vcd
+
+target/
+test_run_dir/
+
+.cache/
+.metals/
+.bloop/
+.bsp/
+metals.sbt
+
+.DS_Store

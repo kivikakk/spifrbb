@@ -1,0 +1,26 @@
+name: cxxsim tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  cxxsim-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Chryse
+      uses: chryse-hdl/setup-chryse-action@v2
+      with:
+        install-oss-cad-suite: true
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Elaborate and run cxxsim
+      run: sbt 'run cxxsim'
