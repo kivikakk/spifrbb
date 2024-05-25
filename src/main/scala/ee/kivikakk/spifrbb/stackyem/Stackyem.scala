@@ -87,7 +87,7 @@ class Stackyem(
       when(el === Instruction.ReadUart) {
         state := State.sReadUart
       }.elsewhen(el === Instruction.WriteUart) {
-        tx.io.enq.bits  := stack(sp - 1.U)
+        tx.io.enq.bits  := stack(sp - 1.U) & ~0x04.U(8.W)
         tx.io.enq.valid := true.B
         sp              := sp - 1.U
       }.elsewhen(el === Instruction.Dup) {

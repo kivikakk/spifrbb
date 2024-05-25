@@ -32,6 +32,8 @@ class RX(private val divisor: Int) extends Module {
   //       ^-- timer hits 0, counterReg 8->7
   //                                       ^-- 0->-1. Finish @ half STOP bit.
 
+  // TODO: this is still backwards. Same with TX.
+
   // Reset valid when "consumed".
   when(io.ready) {
     validReg := false.B

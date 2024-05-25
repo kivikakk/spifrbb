@@ -30,25 +30,20 @@ class Top(implicit platform: Platform) extends Module {
 
     case plat: CXXRTLPlatform =>
       // We're not measuring the UART, so expose the UART module interface
-      // directly instead of the pins.
+      // directly instead of the pins. Skip the error part of the RX interface.
+      // Note that we flip the names so they make sense from CXXRTL's point of
+      // view — this is *its* IO, not ours.
       val io = IO(new Bundle {
-        val uart_tx_valid = Output(Bool())
-        val uart_tx_bits  = Output(UInt(8.W))
-        val uart_tx_ready = Input(Bool())
-
-        val uart_rx_valid = Input(Bool())
-        val uart_rx_bits  = Input(UInt(8.W))
-        val uart_rx_ready = Output(Bool())
+        val uart_tx = Flipped(Decoupled(UInt(8.W)))
+        val uart_rx = Decoupled(UInt(8.W))
       })
 
-      io.uart_tx_valid         := stackyem.io.uartTx.valid
-      io.uart_tx_bits          := stackyem.io.uartTx.bits
-      stackyem.io.uartTx.ready := io.uart_tx_ready
+      io.uart_rx :<>= stackyem.io.uartTx
 
-      stackyem.io.uartRx.valid     := io.uart_rx_valid
-      stackyem.io.uartRx.bits.byte := io.uart_rx_bits
+      stackyem.io.uartRx.valid     := io.uart_tx.valid
+      stackyem.io.uartRx.bits.byte := io.uart_tx.bits
       stackyem.io.uartRx.bits.err  := false.B
-      io.uart_rx_ready             := stackyem.io.uartRx.ready
+      io.uart_tx.ready             := stackyem.io.uartRx.ready
 
     case _ =>
       throw new NotImplementedError(s"platform ${platform.id} not supported")
