@@ -61,9 +61,11 @@ class Stackyem(
   private val sp = RegInit(0.U(unsignedBitLength(stackSize - 1).W))
   debugIo.sp := sp
 
+  private val rx = Queue.irrevocable(io.uartRx, 32, useSyncReadMem = true)
+
   io.uartTx.bits  := 0.U
   io.uartTx.valid := false.B
-  io.uartRx.ready := false.B
+  rx.ready        := false.B
 
   object State extends ChiselEnum {
     val sLocatePC, sReadUart = Value
@@ -94,11 +96,11 @@ class Stackyem(
       }
     }
     is(State.sReadUart) {
-      when(io.uartRx.valid) {
-        io.uartRx.ready := true.B
-        stack(sp)       := Mux(io.uartRx.bits.err, 0xff.U(8.W), io.uartRx.bits.byte)
-        sp              := sp + 1.U
-        state           := State.sLocatePC
+      when(rx.valid) {
+        rx.ready  := true.B
+        stack(sp) := Mux(rx.bits.err, 0xff.U(8.W), rx.bits.byte)
+        sp        := sp + 1.U
+        state     := State.sLocatePC
       }
     }
   }

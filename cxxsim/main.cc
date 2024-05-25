@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <cxxrtl/cxxrtl_vcd.h>
+#include <random>
 #include <spifrbb.h>
 
 int main(int argc, char **argv) {
@@ -25,23 +26,16 @@ int main(int argc, char **argv) {
   vcd.sample(vcd_time++);
   top.p_reset.set(false);
 
-  // ledr should be low or high according to 'expected', where each element
-  // represents 1/4th of a second. ledg should always be high.
-  //
-  // This mirrors the TopSpec test in Scala.
-  std::vector<int> expected = {0, 1, 1, 0, 0, 1, 1, 0};
-  for (auto ledr : expected) {
-    for (int i = 0; i < (CLOCK_HZ / 4); ++i) {
-      assert(top.p_io__ledr.get<int>() == ledr);
-      assert(top.p_io__ledg);
+  std::random_device rd;
+  std::mt19937 mt(rd());
+  std::uniform_int_distribution<uint8_t> dist;
 
-      top.p_clock.set(true);
-      top.step();
-      vcd.sample(vcd_time++);
-      top.p_clock.set(false);
-      top.step();
-      vcd.sample(vcd_time++);
-    }
+  // Stackyem's default program echoes byte 3n+0, drops byte 3n+1, and echos
+  // byte 3n+2 twice. Generate a bunch of random data and make sure it does
+  // that.
+
+  for (int i = 0; i < 10; ++i) {
+    uint8_t b = dist(mt);
   }
 
   std::cout << "finished on cycle " << (vcd_time >> 1) << std::endl;

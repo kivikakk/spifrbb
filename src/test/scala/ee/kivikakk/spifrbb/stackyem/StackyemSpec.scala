@@ -30,20 +30,24 @@ class StackyemSpec extends AnyFlatSpec {
       c.debugIo.pc.expect(0)
 
       c.clock.step()
-      c.debugIo.pc.expect(1)
+      c.debugIo.pc.expect(1, "pc adv")
 
       c.clock.step()
       // Still waiting for UART.
-      c.debugIo.pc.expect(1)
-      c.debugIo.sp.expect(0)
+      c.debugIo.pc.expect(1, "pc wait")
+      c.debugIo.sp.expect(0, "sp wait")
 
       c.io.uartRx.bits.byte.poke(0xac)
       c.io.uartRx.bits.err.poke(false)
       c.io.uartRx.valid.poke(true)
 
       c.clock.step()
-      c.debugIo.pc.expect(1)
-      c.debugIo.sp.expect(1)
+      c.debugIo.pc.expect(1, "pc wait")
+      c.debugIo.sp.expect(0, "sp wait")
+
+      c.clock.step()
+      c.debugIo.pc.expect(1, "pc wait")
+      c.debugIo.sp.expect(1, "sp adv")
       c.debugIo.stack(0).expect(0xac)
 
       c.clock.step()
