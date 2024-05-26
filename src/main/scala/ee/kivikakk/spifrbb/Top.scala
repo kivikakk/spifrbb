@@ -4,10 +4,14 @@ import _root_.circt.stage.ChiselStage
 import chisel3._
 import chisel3.util._
 import ee.hrzn.chryse.ChryseApp
+import ee.hrzn.chryse.ChryseSubcommand
 import ee.hrzn.chryse.platform.Platform
 import ee.hrzn.chryse.platform.cxxrtl.CXXRTLOptions
 import ee.hrzn.chryse.platform.cxxrtl.CXXRTLPlatform
 import ee.hrzn.chryse.platform.ice40.IceBreakerPlatform
+import org.rogach.scallop._
+
+import java.io.FileOutputStream
 
 import uart.UART
 import stackyem.Stackyem
@@ -55,4 +59,17 @@ object Top extends ChryseApp {
   override def genTop()(implicit platform: Platform) = new Top
   override val targetPlatforms                       = Seq(IceBreakerPlatform())
   override val cxxrtlOptions                         = Some(CXXRTLOptions(clockHz = 3_000_000))
+
+  object dumprom extends ChryseSubcommand("dumprom") {
+    banner("Dump the Stackyem ROM to a file.")
+    val file = trailArg[String]("<file>", descr = "File to output the ROM to")
+
+    def execute() = {
+      val rom = Stackyem.DEFAULT_IMEM_INIT
+      val fos = new FileOutputStream(dumprom.file())
+      fos.write(rom.map(_.repr.litValue.toByte).toArray, 0, rom.length)
+      fos.close()
+    }
+  }
+  override val additionalSubcommands = Seq(dumprom)
 }

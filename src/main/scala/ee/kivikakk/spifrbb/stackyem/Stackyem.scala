@@ -12,7 +12,7 @@ import scala.language.implicitConversions
 // 2. Drop next byte.
 // 3. Echo following byte twice.
 object Stackyem {
-  val DEFAULT_IMEM_INIT = Seq[Data](
+  val DEFAULT_IMEM_INIT = Seq(
     Instruction.ReadUart,
     Instruction.WriteUart,
     Instruction.ReadUart,
@@ -26,7 +26,7 @@ object Stackyem {
 }
 
 class Stackyem(
-    imemInit: Seq[Data] = Stackyem.DEFAULT_IMEM_INIT,
+    imemInit: Seq[Data] = Stackyem.DEFAULT_IMEM_INIT.asInstanceOf[Seq[Data]],
     stackSize: Int = 32,
     uartBufferSize: Int = 8,
 ) extends Module {
