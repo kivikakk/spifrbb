@@ -11,12 +11,11 @@ import ee.hrzn.chryse.platform.cxxrtl.CXXRTLPlatform
 import ee.hrzn.chryse.platform.ice40.IceBreakerPlatform
 import ee.hrzn.chryse.tasks.BaseTask
 import ee.kivikakk.spifrbb.stackyem.Instruction
+import ee.kivikakk.spifrbb.stackyem.Stackyem
+import ee.kivikakk.spifrbb.uart.UART
 import org.rogach.scallop._
 
 import java.io.FileOutputStream
-
-import uart.UART
-import stackyem.Stackyem
 
 // TODO: learn more about how to use Irrevocable right.
 
@@ -30,28 +29,41 @@ class Top(implicit platform: Platform) extends Module {
   val stackyem = Module(new Stackyem(imemSize))
   stackyem.io.imem :<>= imem.readPorts(0)
 
-  val nyonker = VecInit(
-    Seq[Data](
-      Instruction.ReadUart,
-      Instruction.WriteUart,
-      Instruction.ReadUart,
-      Instruction.Drop,
-      Instruction.ReadUart,
-      Instruction.Dup,
-      Instruction.WriteUart,
-      Instruction.WriteUart,
-      Instruction.ResetPC,
-    ).map(_.asUInt),
-  )
-  val nlen = nyonker.length
-  val nix  = RegInit(0.U(unsignedBitLength(nlen).W))
+  val spifr  = Module(new SPIFlashReader)
+  val reqlen = Stackyem.DEFAULT_IMEM_INIT.length
+  spifr.io.req.bits.addr := 0x80_0000.U
+  spifr.io.req.bits.len  := reqlen.U
+  spifr.io.req.valid     := false.B
+  spifr.io.res.ready     := false.B
 
-  wrp.address := Mux(nix =/= nlen.U, nix, 0.U)
-  wrp.data    := Mux(nix =/= nlen.U, nyonker(nix), 0.U)
-  wrp.enable  := nix =/= nlen.U
-  nix         := Mux(nix =/= nlen.U, nix + 1.U, nix)
+  val our_addr = RegInit(0.U(unsignedBitLength(imemSize - 1).W))
+  wrp.address := our_addr
+  wrp.data    := 0.U
+  wrp.enable  := false.B
 
-  stackyem.io.en := nix === nlen.U
+  object State extends ChiselEnum {
+    val sInit, sWaitFlash, sDone = Value
+  }
+  val state = RegInit(State.sInit)
+  stackyem.io.en := false.B
+  switch(state) {
+    is(State.sInit) {
+      spifr.io.req.valid := true.B
+      state              := State.sWaitFlash
+    }
+    is(State.sWaitFlash) {
+      when(spifr.io.res.valid) {
+        spifr.io.res.ready := true.B
+        wrp.data           := spifr.io.res.bits
+        wrp.enable         := true.B
+        our_addr           := Mux(our_addr =/= (reqlen - 1).U, our_addr + 1.U, our_addr)
+        state              := Mux(our_addr =/= (reqlen - 1).U, State.sWaitFlash, State.sDone)
+      }
+    }
+    is(State.sDone) {
+      stackyem.io.en := true.B
+    }
+  }
 
   // TODO NEXT: put an enable on stackyem (start it off in an idle state),
   // load into imem from SPIFR.
@@ -64,6 +76,13 @@ class Top(implicit platform: Platform) extends Module {
 
       stackyem.io.uartRx :<>= uart.rxIo
       uart.txIo :<>= stackyem.io.uartTx
+
+      plat.resources.spiFlash.cs    := spifr.pins.cs
+      plat.resources.spiFlash.clock := spifr.pins.clock
+      plat.resources.spiFlash.copi  := spifr.pins.copi
+      spifr.pins.cipo               := plat.resources.spiFlash.cipo
+      plat.resources.spiFlash.wp    := false.B
+      plat.resources.spiFlash.hold  := false.B
 
     case plat: CXXRTLPlatform =>
       // We're not measuring the UART, so expose the UART module interface
