@@ -63,7 +63,7 @@ class RX(private val divisor: Int) extends Module {
         validReg     := true.B
         bitsReg.byte := shiftReg(8, 1)
         // START high or STOP low.
-        bitsReg.err := shiftReg(0) | ~shiftReg(1)
+        bitsReg.err := shiftReg(0) | ~shiftReg(9)
       }
       state := State.sIdle
     }

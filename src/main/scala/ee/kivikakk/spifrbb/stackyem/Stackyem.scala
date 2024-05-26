@@ -99,6 +99,7 @@ class Stackyem(
     }
     is(State.sAct) {
       val el = io.imem.data
+      state := State.sLocatePC
       when(el === Instruction.ReadUart.asUInt) {
         state := State.sReadUart
       }.elsewhen(el === Instruction.WriteUart.asUInt) {

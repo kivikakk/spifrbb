@@ -32,11 +32,12 @@ class Top(implicit platform: Platform) extends Module {
 
   val nyonker = VecInit(
     Seq[Data](
-      Instruction.Imm,
-      0x61.U,
-      Instruction.Imm,
-      0x77.U,
-      Instruction.Imm,
+      Instruction.ReadUart,
+      Instruction.WriteUart,
+      Instruction.ReadUart,
+      Instruction.Drop,
+      Instruction.ReadUart,
+      Instruction.Dup,
       Instruction.WriteUart,
       Instruction.WriteUart,
       Instruction.ResetPC,
@@ -89,7 +90,7 @@ class Top(implicit platform: Platform) extends Module {
 object Top extends ChryseApp {
   override val name                                  = "spifrbb"
   override def genTop()(implicit platform: Platform) = new Top
-  override val targetPlatforms                       = Seq(IceBreakerPlatform())
+  override val targetPlatforms                       = Seq(IceBreakerPlatform(ubtnReset = true))
   override val cxxrtlOptions                         = Some(CXXRTLOptions(clockHz = 3_000_000))
 
   object rom extends ChryseSubcommand("rom") with BaseTask {
