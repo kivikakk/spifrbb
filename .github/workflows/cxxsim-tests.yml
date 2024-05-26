@@ -22,5 +22,8 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v4
 
+    - name: Generate ROM image
+      run: sbt 'run rom'
+
     - name: Elaborate and run cxxsim
       run: sbt 'run cxxsim'
