@@ -12,6 +12,9 @@ permissions:
 jobs:
   cxxsim-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [wb, bb]
     steps:
     - name: Set up Chryse
       uses: chryse-hdl/setup-chryse-action@v2
@@ -26,4 +29,4 @@ jobs:
       run: sbt 'run rom'
 
     - name: Elaborate and run cxxsim
-      run: sbt 'run cxxsim'
+      run: sbt 'run cxxsim -Op ${{ matrix.platform }}'
