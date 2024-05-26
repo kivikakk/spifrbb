@@ -80,55 +80,53 @@ class Stackyem(
   rx.ready        := false.B
 
   object State extends ChiselEnum {
-    val sHold, sLocatePC, sAct, sImm, sReadUart = Value
+    val sHold, sAdvancePC, sAct, sImm, sReadUart = Value
   }
   private val state = RegInit(State.sHold)
 
-  io.imem.address := pc
   io.imem.enable  := true.B
+  io.imem.address := pc
 
   switch(state) {
     is(State.sHold) {
-      when(io.en) {
-        state := State.sLocatePC
-      }
+      state := Mux(io.en, State.sAdvancePC, State.sHold)
     }
-    is(State.sLocatePC) {
+    is(State.sAdvancePC) {
       pc    := pc + 1.U
       state := State.sAct
     }
     is(State.sAct) {
-      val el = io.imem.data
-      state := State.sLocatePC
-      when(el === Instruction.ReadUart.asUInt) {
+      val insn = io.imem.data
+      state := State.sAdvancePC
+      when(insn === Instruction.ReadUart) {
         state := State.sReadUart
-      }.elsewhen(el === Instruction.WriteUart.asUInt) {
+      }.elsewhen(insn === Instruction.WriteUart) {
         tx.io.enq.bits  := stack(sp - 1.U)
         tx.io.enq.valid := true.B
         sp              := sp - 1.U
-      }.elsewhen(el === Instruction.Dup.asUInt) {
+      }.elsewhen(insn === Instruction.Dup) {
         stack(sp) := stack(sp - 1.U)
         sp        := sp + 1.U
-      }.elsewhen(el === Instruction.Drop.asUInt) {
+      }.elsewhen(insn === Instruction.Drop) {
         sp := sp - 1.U
-      }.elsewhen(el === Instruction.Imm.asUInt) {
+      }.elsewhen(insn === Instruction.Imm) {
         pc    := pc + 1.U
         state := State.sImm
-      }.elsewhen(el === Instruction.ResetPC.asUInt) {
+      }.elsewhen(insn === Instruction.ResetPC) {
         pc := 0.U
       }
     }
     is(State.sImm) {
       stack(sp) := io.imem.data
       sp        := sp + 1.U
-      state     := State.sLocatePC
+      state     := State.sAdvancePC
     }
     is(State.sReadUart) {
       when(rx.valid) {
         rx.ready  := true.B
         stack(sp) := Mux(rx.bits.err, 0xff.U(8.W), rx.bits.byte)
         sp        := sp + 1.U
-        state     := State.sLocatePC
+        state     := State.sAdvancePC
       }
     }
   }
@@ -143,4 +141,7 @@ object Instruction extends ChiselEnum {
   val Drop      = Value(0x04.U)
   val Imm       = Value(0x05.U)
   val ResetPC   = Value(0xff.U)
+
+  implicit def instruction2UInt(insn: Instruction.Type): UInt =
+    insn.asUInt
 }
