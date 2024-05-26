@@ -2,8 +2,38 @@ package ee.kivikakk.spifrbb.stackyem
 
 import chisel3._
 import chisel3.simulator.EphemeralSimulator._
+import chisel3.util._
 import ee.hrzn.chryse.platform.Platform
+import ee.kivikakk.spifrbb.uart.RXOut
 import org.scalatest.flatspec.AnyFlatSpec
+
+class StackyemStaticMem(imem: Seq[Data], stackSize: Int) extends Module {
+  val stackyem = Module(
+    new Stackyem(imemSize = imem.length, stackSize = stackSize),
+  )
+
+  val io = IO(new Bundle {
+    val uartTx = Decoupled(UInt(8.W))
+    val uartRx = Flipped(Decoupled(new RXOut))
+  })
+  io.uartTx :<>= stackyem.io.uartTx
+  stackyem.io.uartRx :<>= io.uartRx
+
+  val debugIo = IO(
+    new StackyemDebugIO(imemSize = imem.length, stackSize = stackSize),
+  )
+  debugIo :<>= stackyem.debugIo
+
+  private val rom = VecInit(imem.map(_.asUInt))
+  stackyem.io.en := true.B
+
+  private val dataPort = RegInit(0.U(8.W))
+  stackyem.io.imem.data := dataPort
+
+  when(stackyem.io.imem.enable) {
+    dataPort := rom(stackyem.io.imem.address)
+  }
+}
 
 class StackyemSpec extends AnyFlatSpec {
   behavior.of("Stackyem")
@@ -15,8 +45,8 @@ class StackyemSpec extends AnyFlatSpec {
 
   it should "read a byte onto the stack and dup it" in {
     simulate(
-      new Stackyem(
-        imemInit = Seq(Instruction.ReadUart, Instruction.Dup),
+      new StackyemStaticMem(
+        imem = Seq(Instruction.ReadUart, Instruction.Dup),
         stackSize = 2,
       ),
     ) { c =>
@@ -48,19 +78,19 @@ class StackyemSpec extends AnyFlatSpec {
       c.clock.step()
       c.debugIo.pc.expect(1, "pc wait")
       c.debugIo.sp.expect(1, "sp adv")
-      c.debugIo.stack(0).expect(0xac)
+      c.debugIo.stack(0).expect(0xac, "stack set")
 
-      c.clock.step()
-      c.debugIo.pc.expect(0, "pc wrap")
+      c.clock.step(2)
+      c.debugIo.pc.expect(0, "pc wait")
       c.debugIo.sp.expect(0, "sp wrap")
-      c.debugIo.stack(1).expect(0xac)
+      c.debugIo.stack(1).expect(0xac, "stack still")
     }
   }
 
   it should "write to uart" in {
     simulate(
-      new Stackyem(
-        imemInit = Seq(Instruction.Imm, 0x45.U, Instruction.WriteUart),
+      new StackyemStaticMem(
+        imem = Seq(Instruction.Imm, 0x45.U, Instruction.WriteUart),
         stackSize = 2,
       ),
     ) { c =>
@@ -72,14 +102,14 @@ class StackyemSpec extends AnyFlatSpec {
       c.debugIo.sp.expect(0)
       c.debugIo.stack(0).expect(0)
 
-      c.clock.step()
+      c.clock.step(3)
       c.debugIo.pc.expect(2, "pc adv")
       c.debugIo.sp.expect(1, "sp adv")
       c.debugIo.stack(0).expect(0x45, "stack set")
       c.io.uartTx.bits.expect(0, "uart tx bits wait")
       c.io.uartTx.valid.expect(0, "uart tx valid wait")
 
-      c.clock.step()
+      c.clock.step(2)
       c.io.uartTx.bits.expect(0x45, "uart tx bits set")
       c.io.uartTx.valid.expect(1, "uart tx valid set")
 

@@ -22,7 +22,14 @@ import stackyem.Stackyem
 class Top(implicit platform: Platform) extends Module {
   override def desiredName = "spifrbb"
 
-  val stackyem = Module(new Stackyem)
+  val imemSize = 256
+  val imem     = SRAM(imemSize, UInt(8.W), 1, 1, 0)
+
+  val stackyem = Module(new Stackyem(imemSize))
+  stackyem.io.imem :<>= imem.readPorts(0)
+
+  // TODO NEXT: put an enable on stackyem (start it off in an idle state),
+  // load into imem from SPIFR.
 
   platform match {
     case plat: IceBreakerPlatform =>
@@ -70,7 +77,7 @@ object Top extends ChryseApp {
       val content = Stackyem.DEFAULT_IMEM_INIT
       val path    = s"$buildDir/rom.bin"
       val fos     = new FileOutputStream(path)
-      fos.write(content.map(_.repr.litValue.toByte).toArray, 0, content.length)
+      fos.write(content.map(_.litValue.toByte).toArray, 0, content.length)
       fos.close()
       println(s"wrote $path")
 
