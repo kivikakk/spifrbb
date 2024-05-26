@@ -162,8 +162,7 @@ object Top extends ChryseApp {
   override val targetPlatforms                       = Seq(IceBreakerPlatform(ubtnReset = true))
   override val cxxrtlOptions = Some(
     CXXRTLOptions(
-      platforms =
-        Seq(classOf[CXXRTLWhiteboxPlatform], classOf[CXXRTLBlackboxPlatform]),
+      platforms = Seq(new CXXRTLWhiteboxPlatform, new CXXRTLBlackboxPlatform),
       blackboxes = Seq(classOf[SPIFRWhitebox], classOf[SPIFRBlackbox]),
     ),
   )
