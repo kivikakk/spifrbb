@@ -1,4 +1,4 @@
-package ee.kivikakk.spifrbb.stackyem
+package ee.kivikakk.spifrbb
 
 import chisel3._
 import chisel3.simulator.EphemeralSimulator._

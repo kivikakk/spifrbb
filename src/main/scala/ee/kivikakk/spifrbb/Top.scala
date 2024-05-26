@@ -10,8 +10,6 @@ import ee.hrzn.chryse.platform.cxxrtl.CXXRTLOptions
 import ee.hrzn.chryse.platform.cxxrtl.CXXRTLPlatform
 import ee.hrzn.chryse.platform.ice40.IceBreakerPlatform
 import ee.hrzn.chryse.tasks.BaseTask
-import ee.kivikakk.spifrbb.stackyem.Instruction
-import ee.kivikakk.spifrbb.stackyem.Stackyem
 import ee.kivikakk.spifrbb.uart.UART
 import org.rogach.scallop._
 
