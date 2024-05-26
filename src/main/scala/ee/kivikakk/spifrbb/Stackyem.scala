@@ -80,7 +80,7 @@ class Stackyem(
   rx.ready        := false.B
 
   object State extends ChiselEnum {
-    val sHold, sAdvancePC, sAct, sImm, sReadUart = Value
+    val sHold, sAdvancePC, sAct, sImm, sReadUart, sErr = Value
   }
   private val state = RegInit(State.sHold)
 
@@ -97,50 +97,42 @@ class Stackyem(
     }
     is(State.sAct) {
       val insn = io.imem.data
-      state := State.sAdvancePC
+      pc    := pc + 1.U
+      state := State.sAct
       when(insn === Instruction.ReadUart) {
+        pc    := pc
         state := State.sReadUart
       }.elsewhen(insn === Instruction.WriteUart) {
         tx.io.enq.bits  := stack(sp - 1.U)
         tx.io.enq.valid := true.B
         sp              := sp - 1.U
-
-        pc    := pc + 1.U
-        state := State.sAct
       }.elsewhen(insn === Instruction.Dup) {
         stack(sp) := stack(sp - 1.U)
         sp        := sp + 1.U
-
-        pc    := pc + 1.U
-        state := State.sAct
       }.elsewhen(insn === Instruction.Drop) {
         sp := sp - 1.U
-
-        pc    := pc + 1.U
-        state := State.sAct
       }.elsewhen(insn === Instruction.Imm) {
-        pc    := pc + 1.U
         state := State.sImm
       }.elsewhen(insn === Instruction.ResetPC) {
-        state := State.sAct
         pc    := 0.U
+        state := State.sAdvancePC
+      }.otherwise {
+        state := State.sErr
       }
     }
     is(State.sImm) {
       stack(sp) := io.imem.data
       sp        := sp + 1.U
-
-      pc    := pc + 1.U
-      state := State.sAct
+      pc        := pc + 1.U
+      state     := State.sAct
     }
     is(State.sReadUart) {
       when(rx.valid) {
         rx.ready  := true.B
         stack(sp) := Mux(rx.bits.err, 0xff.U(8.W), rx.bits.byte)
         sp        := sp + 1.U
-
-        pc    := pc + 1.U
-        state := State.sAct
+        pc        := pc + 1.U
+        state     := State.sAct
       }
     }
   }
