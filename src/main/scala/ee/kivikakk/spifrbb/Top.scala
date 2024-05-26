@@ -101,6 +101,12 @@ class Top(implicit platform: Platform) extends Module {
       stackyem.io.uartRx.bits.err  := false.B
       io.uart_tx.ready             := stackyem.io.uartRx.ready
 
+      val wb = Module(new SPIFRWhitebox)
+      wb.io.clock     := clock
+      wb.io.cs        := spifr.pins.cs
+      wb.io.copi      := spifr.pins.copi
+      spifr.pins.cipo := wb.io.cipo
+
     case _ =>
       throw new NotImplementedError(s"platform ${platform.id} not supported")
   }
@@ -110,23 +116,39 @@ object Top extends ChryseApp {
   override val name                                  = "spifrbb"
   override def genTop()(implicit platform: Platform) = new Top
   override val targetPlatforms                       = Seq(IceBreakerPlatform(ubtnReset = true))
-  override val cxxrtlOptions                         = Some(CXXRTLOptions(clockHz = 3_000_000))
+  override val cxxrtlOptions = Some(
+    CXXRTLOptions(
+      clockHz = 3_000_000,
+      blackboxes = Seq(classOf[SPIFRWhitebox]),
+    ),
+  )
 
   object rom extends ChryseSubcommand("rom") with BaseTask {
     banner("Build the Stackyem ROM image, and optionally to a file.")
     val program = opt[Boolean](descr = "Program the ROM onto the iCEBreaker")
     // TODO: multiplatform support.
 
+    private val flashBase = 0x80_0000;
+
     def execute() = {
-      val content = Stackyem.DEFAULT_IMEM_INIT
+      val content = Stackyem.DEFAULT_IMEM_INIT.map(_.litValue.toByte)
       val path    = s"$buildDir/rom.bin"
       val fos     = new FileOutputStream(path)
-      fos.write(content.map(_.litValue.toByte).toArray, 0, content.length)
+      fos.write(content.toArray, 0, content.length)
       fos.close()
       println(s"wrote $path")
 
+      // HACK: somehow hook this to the cxxsim action
+      writePath(s"$buildDir/rom.cc") { wr =>
+        wr.print("const uint8_t spi_flash_content[] = \"");
+        wr.print(content.map(b => f"\\$b%03o").mkString)
+        wr.println("\";");
+        wr.println(f"const uint32_t spi_flash_base = 0x$flashBase%x;");
+        wr.println(f"const uint32_t spi_flash_length = 0x${content.length}%x;");
+      }
+
       if (rom.program()) {
-        runCmd(CmdStepProgram, Seq("iceprog", "-o", "0x800000", path))
+        runCmd(CmdStepProgram, Seq("iceprog", "-o", f"0x$flashBase%x", path))
       }
     }
   }
