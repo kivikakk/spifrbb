@@ -82,7 +82,7 @@ class Stackyem(
   object State extends ChiselEnum {
     val sHold, sLocatePC, sAct, sImm, sReadUart = Value
   }
-  private val state = RegInit(State.sLocatePC)
+  private val state = RegInit(State.sHold)
 
   io.imem.address := pc
   io.imem.enable  := true.B

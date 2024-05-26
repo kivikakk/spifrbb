@@ -31,6 +31,8 @@ class StackyemStaticMem(imem: Seq[Data], stackSize: Int) extends Module {
   stackyem.io.imem.data := dataPort
 
   when(stackyem.io.imem.enable) {
+    // XXX: if we end up being too fast compared to the real thing, pop a
+    // RegNext here.
     dataPort := rom(stackyem.io.imem.address)
   }
 }
@@ -59,7 +61,7 @@ class StackyemSpec extends AnyFlatSpec {
 
       c.debugIo.pc.expect(0)
 
-      c.clock.step()
+      c.clock.step(2)
       c.debugIo.pc.expect(1, "pc adv")
 
       c.clock.step()
@@ -102,7 +104,7 @@ class StackyemSpec extends AnyFlatSpec {
       c.debugIo.sp.expect(0)
       c.debugIo.stack(0).expect(0)
 
-      c.clock.step(3)
+      c.clock.step(4)
       c.debugIo.pc.expect(2, "pc adv")
       c.debugIo.sp.expect(1, "sp adv")
       c.debugIo.stack(0).expect(0x45, "stack set")
