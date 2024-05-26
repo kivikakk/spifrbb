@@ -28,11 +28,11 @@ class StackyemStaticMem(imem: Seq[Data], stackSize: Int) extends Module {
   stackyem.io.en := true.B
 
   private val dataPort = RegInit(0.U(8.W))
-  stackyem.io.imem.data := dataPort
-
-  when(stackyem.io.imem.enable) {
-    dataPort := rom(stackyem.io.imem.address)
-  }
+  stackyem.io.imem.data := RegEnable(
+    rom(stackyem.io.imem.address),
+    0.U,
+    stackyem.io.imem.enable,
+  )
 }
 
 class StackyemSpec extends AnyFlatSpec {

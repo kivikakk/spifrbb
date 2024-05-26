@@ -72,13 +72,7 @@ class Top(implicit platform: Platform) extends Module {
   platform match {
     case plat: IceBreakerPlatform =>
       val spifr = Module(new SPIFlashReader)
-      spifr.io.req.bits.addr := spifrio.req.bits.addr
-      spifr.io.req.bits.len  := spifrio.req.bits.len
-      spifr.io.req.valid     := spifrio.req.valid
-      spifrio.req.ready      := spifr.io.req.ready
-      spifrio.res.bits       := spifr.io.res.bits
-      spifrio.res.valid      := spifr.io.res.valid
-      spifr.io.res.ready     := spifrio.res.ready
+      spifrio :<>= spifr.io
 
       val uart = Module(new UART)
       plat.resources.uart.tx := uart.pins.tx
