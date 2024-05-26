@@ -10,6 +10,7 @@ import ee.hrzn.chryse.platform.cxxrtl.CXXRTLOptions
 import ee.hrzn.chryse.platform.cxxrtl.CXXRTLPlatform
 import ee.hrzn.chryse.platform.ice40.IceBreakerPlatform
 import ee.hrzn.chryse.tasks.BaseTask
+import ee.kivikakk.spifrbb.stackyem.Instruction
 import org.rogach.scallop._
 
 import java.io.FileOutputStream
@@ -24,9 +25,32 @@ class Top(implicit platform: Platform) extends Module {
 
   val imemSize = 256
   val imem     = SRAM(imemSize, UInt(8.W), 1, 1, 0)
+  val wrp      = imem.writePorts(0)
 
   val stackyem = Module(new Stackyem(imemSize))
   stackyem.io.imem :<>= imem.readPorts(0)
+
+  val nyonker = VecInit(
+    Seq[Data](
+      Instruction.Imm,
+      0x61.U,
+      Instruction.Imm,
+      0x77.U,
+      Instruction.Imm,
+      Instruction.WriteUart,
+      Instruction.WriteUart,
+      Instruction.ResetPC,
+    ).map(_.asUInt),
+  )
+  val nlen = nyonker.length
+  val nix  = RegInit(0.U(unsignedBitLength(nlen).W))
+
+  wrp.address := Mux(nix =/= nlen.U, nix, 0.U)
+  wrp.data    := Mux(nix =/= nlen.U, nyonker(nix), 0.U)
+  wrp.enable  := nix =/= nlen.U
+  nix         := Mux(nix =/= nlen.U, nix + 1.U, nix)
+
+  stackyem.io.en := nix === nlen.U
 
   // TODO NEXT: put an enable on stackyem (start it off in an idle state),
   // load into imem from SPIFR.

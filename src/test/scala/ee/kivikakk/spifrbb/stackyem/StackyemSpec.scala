@@ -31,8 +31,6 @@ class StackyemStaticMem(imem: Seq[Data], stackSize: Int) extends Module {
   stackyem.io.imem.data := dataPort
 
   when(stackyem.io.imem.enable) {
-    // XXX: if we end up being too fast compared to the real thing, pop a
-    // RegNext here.
     dataPort := rom(stackyem.io.imem.address)
   }
 }
