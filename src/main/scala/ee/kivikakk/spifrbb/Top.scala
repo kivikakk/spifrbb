@@ -14,6 +14,8 @@ import ee.kivikakk.spifrbb.uart.UART
 import org.rogach.scallop._
 
 import java.io.FileOutputStream
+import java.nio.file.Files
+import java.nio.file.Paths
 
 // TODO: learn more about how to use Irrevocable right.
 
@@ -175,6 +177,8 @@ object Top extends ChryseApp {
     private val flashBase = 0x80_0000;
 
     def execute() = {
+      Files.createDirectories(Paths.get(buildDir))
+
       val content = Stackyem.DEFAULT_IMEM_INIT.map(_.litValue.toByte)
       val path    = s"$buildDir/rom.bin"
       val fos     = new FileOutputStream(path)
