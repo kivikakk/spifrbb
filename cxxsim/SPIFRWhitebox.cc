@@ -8,10 +8,6 @@
  * Yawonk.
  */
 
-extern "C" const uint8_t spi_flash_content[];
-extern "C" const uint32_t spi_flash_base;
-extern "C" const uint32_t spi_flash_length;
-
 namespace cxxrtl_design {
 
 struct bb_p_SPIFRWhitebox_impl : public bb_p_SPIFRWhitebox {
