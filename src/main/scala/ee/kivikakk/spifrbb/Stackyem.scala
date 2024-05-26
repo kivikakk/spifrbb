@@ -1,11 +1,14 @@
 package ee.kivikakk.spifrbb
 
 import chisel3._
+import chisel3.layer._
 import chisel3.util._
 import chisel3.util.switch
 import ee.kivikakk.spifrbb.uart.RXOut
 
 import scala.language.implicitConversions
+
+object StackyemDebugIO extends Layer(Convention.Bind)
 
 // Default program:
 // 1. Echo one byte.
@@ -55,16 +58,16 @@ class Stackyem(
       Flipped(new MemoryReadPort(UInt(8.W), unsignedBitLength(imemSize - 1)))
   })
 
-  val debugIo = IO(new StackyemDebugIO(imemSize, stackSize))
-
-  private val pc = RegInit(0.U(unsignedBitLength(imemSize - 1).W))
-  debugIo.pc := pc
-
+  private val pc    = RegInit(0.U(unsignedBitLength(imemSize - 1).W))
   private val stack = RegInit(VecInit(Seq.fill(stackSize)(0.U(8.W))))
-  debugIo.stack := stack
+  private val sp    = RegInit(0.U(unsignedBitLength(stackSize - 1).W))
 
-  private val sp = RegInit(0.U(unsignedBitLength(stackSize - 1).W))
-  debugIo.sp := sp
+  val debugIo = IO(new StackyemDebugIO(imemSize, stackSize))
+  block(StackyemDebugIO) {
+    debugIo.pc    := pc
+    debugIo.stack := stack
+    debugIo.sp    := sp
+  }
 
   private val rx =
     Queue.irrevocable(io.uartRx, uartBufferSize, useSyncReadMem = true)

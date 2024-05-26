@@ -1,6 +1,7 @@
 package ee.kivikakk.spifrbb
 
 import chisel3._
+import chisel3.layer
 import chisel3.simulator.EphemeralSimulator._
 import chisel3.util._
 import ee.hrzn.chryse.platform.Platform
@@ -8,6 +9,8 @@ import ee.kivikakk.spifrbb.uart.RXOut
 import org.scalatest.flatspec.AnyFlatSpec
 
 class StackyemStaticMem(imem: Seq[Data], stackSize: Int) extends Module {
+  layer.enable(StackyemDebugIO)
+
   val stackyem = Module(
     new Stackyem(imemSize = imem.length, stackSize = stackSize),
   )
