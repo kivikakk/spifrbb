@@ -9,6 +9,7 @@ import ee.hrzn.chryse.platform.Platform
 import ee.hrzn.chryse.platform.cxxrtl.CXXRTLOptions
 import ee.hrzn.chryse.platform.cxxrtl.CXXRTLPlatform
 import ee.hrzn.chryse.platform.ice40.IceBreakerPlatform
+import ee.hrzn.chryse.tasks.BaseTask
 import org.rogach.scallop._
 
 import java.io.FileOutputStream
@@ -60,16 +61,23 @@ object Top extends ChryseApp {
   override val targetPlatforms                       = Seq(IceBreakerPlatform())
   override val cxxrtlOptions                         = Some(CXXRTLOptions(clockHz = 3_000_000))
 
-  object dumprom extends ChryseSubcommand("dumprom") {
-    banner("Dump the Stackyem ROM to a file.")
-    val file = trailArg[String]("<file>", descr = "File to output the ROM to")
+  object rom extends ChryseSubcommand("rom") with BaseTask {
+    banner("Build the Stackyem ROM image, and optionally to a file.")
+    val program = opt[Boolean](descr = "Program the ROM onto the iCEBreaker")
+    // TODO: multiplatform support.
 
     def execute() = {
-      val rom = Stackyem.DEFAULT_IMEM_INIT
-      val fos = new FileOutputStream(dumprom.file())
-      fos.write(rom.map(_.repr.litValue.toByte).toArray, 0, rom.length)
+      val content = Stackyem.DEFAULT_IMEM_INIT
+      val path    = s"$buildDir/rom.bin"
+      val fos     = new FileOutputStream(path)
+      fos.write(content.map(_.repr.litValue.toByte).toArray, 0, content.length)
       fos.close()
+      println(s"wrote $path")
+
+      if (rom.program()) {
+        runCmd(CmdStepProgram, Seq("iceprog", "-o", "0x800000", path))
+      }
     }
   }
-  override val additionalSubcommands = Seq(dumprom)
+  override val additionalSubcommands = Seq(rom)
 }
