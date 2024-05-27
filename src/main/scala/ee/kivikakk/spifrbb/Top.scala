@@ -31,13 +31,13 @@ class Top(implicit platform: Platform) extends Module {
   val stackyem = Module(new Stackyem(imemSize))
   stackyem.io.imem :<>= imem.readPorts(0)
 
-  val spifrio = Wire(new SPIFlashReaderIO)
+  val spifrcon = Wire(new SPIFlashReaderIO)
 
   val reqlen = Stackyem.DEFAULT_IMEM_INIT.length
-  spifrio.req.bits.addr := 0x80_0000.U
-  spifrio.req.bits.len  := reqlen.U
-  spifrio.req.valid     := false.B
-  spifrio.res.ready     := false.B
+  spifrcon.req.bits.addr := 0x80_0000.U
+  spifrcon.req.bits.len  := reqlen.U
+  spifrcon.req.valid     := false.B
+  spifrcon.res.ready     := false.B
 
   val our_addr = RegInit(0.U(unsignedBitLength(imemSize - 1).W))
   wrp.address := our_addr
@@ -51,16 +51,16 @@ class Top(implicit platform: Platform) extends Module {
   stackyem.io.en := false.B
   switch(state) {
     is(State.sInit) {
-      spifrio.req.valid := true.B
-      state             := State.sWaitFlash
+      spifrcon.req.valid := true.B
+      state              := State.sWaitFlash
     }
     is(State.sWaitFlash) {
-      when(spifrio.res.valid) {
-        spifrio.res.ready := true.B
-        wrp.data          := spifrio.res.bits
-        wrp.enable        := true.B
-        our_addr          := Mux(our_addr =/= (reqlen - 1).U, our_addr + 1.U, our_addr)
-        state             := Mux(our_addr =/= (reqlen - 1).U, State.sWaitFlash, State.sDone)
+      when(spifrcon.res.valid) {
+        spifrcon.res.ready := true.B
+        wrp.data           := spifrcon.res.bits
+        wrp.enable         := true.B
+        our_addr           := Mux(our_addr =/= (reqlen - 1).U, our_addr + 1.U, our_addr)
+        state              := Mux(our_addr =/= (reqlen - 1).U, State.sWaitFlash, State.sDone)
       }
     }
     is(State.sDone) {
@@ -73,15 +73,13 @@ class Top(implicit platform: Platform) extends Module {
 
   platform match {
     case plat: IceBreakerPlatform =>
-      val spifr = Module(new SPIFlashReader)
-      spifrio :<>= spifr.io
-
       val uart = Module(new UART)
       plat.resources.uart.tx := uart.pins.tx
       uart.pins.rx           := plat.resources.uart.rx
-
       stackyem.io.uart :<>= uart.io
 
+      val spifr = Module(new SPIFlashReader)
+      spifrcon :<>= spifr.io
       plat.resources.spiFlash.cs    := spifr.pins.cs
       plat.resources.spiFlash.clock := spifr.pins.clock
       plat.resources.spiFlash.copi  := spifr.pins.copi
@@ -90,11 +88,11 @@ class Top(implicit platform: Platform) extends Module {
       plat.resources.spiFlash.hold  := false.B
 
     case _: CXXRTLWhiteboxPlatform =>
-      val spifr = Module(new SPIFlashReader)
-      spifrio :<>= spifr.io
-
       val io = IO(Flipped(new UARTIO))
       stackyem.io.uart :<>= io
+
+      val spifr = Module(new SPIFlashReader)
+      spifrcon :<>= spifr.io
 
       val wb = Module(new SPIFRWhitebox)
       wb.io.clock     := clock
@@ -103,18 +101,19 @@ class Top(implicit platform: Platform) extends Module {
       spifr.pins.cipo := wb.io.cipo
 
     case _: CXXRTLBlackboxPlatform =>
-      val spifr = Module(new SPIFRBlackbox)
-      spifr.io.clock         := clock
-      spifr.io.req_bits_addr := spifrio.req.bits.addr
-      spifr.io.req_bits_len  := spifrio.req.bits.len
-      spifr.io.req_valid     := spifrio.req.valid
-      spifrio.req.ready      := spifr.io.req_ready
-      spifrio.res.bits       := spifr.io.res_bits
-      spifrio.res.valid      := spifr.io.res_valid
-      spifr.io.res_ready     := spifrio.res.ready
-
       val io = IO(Flipped(new UARTIO))
       stackyem.io.uart :<>= io
+
+      val spifr = Module(new SPIFRBlackbox)
+      // XXX: improve blackbox generation.
+      spifr.io.clock         := clock
+      spifr.io.req_bits_addr := spifrcon.req.bits.addr
+      spifr.io.req_bits_len  := spifrcon.req.bits.len
+      spifr.io.req_valid     := spifrcon.req.valid
+      spifrcon.req.ready     := spifr.io.req_ready
+      spifrcon.res.bits      := spifr.io.res_bits
+      spifrcon.res.valid     := spifr.io.res_valid
+      spifr.io.res_ready     := spifrcon.res.ready
 
     case _ =>
       throw new NotImplementedError(s"platform ${platform.id} not supported")
