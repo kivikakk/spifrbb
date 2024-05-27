@@ -24,8 +24,7 @@ class StackyemStaticMem(imem: Seq[Data], stackSize: Int) extends Module {
   )
   debugIo :<>= stackyem.debugIo
 
-  private val rom      = VecInit(imem.map(_.asUInt))
-  private val dataPort = RegInit(0.U(8.W))
+  private val rom = VecInit(imem.map(_.asUInt))
 
   stackyem.io.en := true.B
   stackyem.io.imem.data := RegEnable(
