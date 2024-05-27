@@ -97,10 +97,8 @@ class Stackyem(
     }
     is(State.sAct) {
       val insn = io.imem.data
-      pc    := pc + 1.U
-      state := State.sAct
+      state := State.sAdvancePC
       when(insn === Instruction.ReadUart) {
-        pc    := pc
         state := State.sReadUart
       }.elsewhen(insn === Instruction.WriteUart) {
         tx.io.enq.bits  := stack(sp - 1.U)
@@ -112,10 +110,10 @@ class Stackyem(
       }.elsewhen(insn === Instruction.Drop) {
         sp := sp - 1.U
       }.elsewhen(insn === Instruction.Imm) {
+        pc    := pc + 1.U
         state := State.sImm
       }.elsewhen(insn === Instruction.ResetPC) {
-        pc    := 0.U
-        state := State.sAdvancePC
+        pc := 0.U
       }.otherwise {
         state := State.sErr
       }
@@ -123,16 +121,14 @@ class Stackyem(
     is(State.sImm) {
       stack(sp) := io.imem.data
       sp        := sp + 1.U
-      pc        := pc + 1.U
-      state     := State.sAct
+      state     := State.sAdvancePC
     }
     is(State.sReadUart) {
       when(rx.valid) {
         rx.ready  := true.B
         stack(sp) := Mux(rx.bits.err, 0xff.U(8.W), rx.bits.byte)
         sp        := sp + 1.U
-        pc        := pc + 1.U
-        state     := State.sAct
+        state     := State.sAdvancePC
       }
     }
   }
