@@ -3,7 +3,7 @@ package ee.kivikakk.spifrbb
 import chisel3._
 import chisel3.util._
 import chisel3.util.switch
-import ee.kivikakk.spifrbb.uart.RXOut
+import ee.kivikakk.spifrbb.uart.UARTIO
 
 import scala.language.implicitConversions
 
@@ -48,32 +48,29 @@ class Stackyem(
     )
 
   val io = IO(new Bundle {
-    val en     = Input(Bool())
-    val uartTx = Decoupled(UInt(8.W))
-    val uartRx = Flipped(Decoupled(new RXOut))
+    val en   = Input(Bool())
+    val uart = Flipped(new UARTIO)
     val imem =
       Flipped(new MemoryReadPort(UInt(8.W), unsignedBitLength(imemSize - 1)))
   })
 
-  val debugIo = IO(new StackyemDebugIO(imemSize, stackSize))
-
-  private val pc = RegInit(0.U(unsignedBitLength(imemSize - 1).W))
-  debugIo.pc := pc
-
+  private val pc    = RegInit(0.U(unsignedBitLength(imemSize - 1).W))
   private val stack = RegInit(VecInit(Seq.fill(stackSize)(0.U(8.W))))
-  debugIo.stack := stack
+  private val sp    = RegInit(0.U(unsignedBitLength(stackSize - 1).W))
 
-  private val sp = RegInit(0.U(unsignedBitLength(stackSize - 1).W))
-  debugIo.sp := sp
+  val debugIo = IO(new StackyemDebugIO(imemSize, stackSize))
+  debugIo.pc    := pc
+  debugIo.stack := stack
+  debugIo.sp    := sp
 
   private val rx =
-    Queue.irrevocable(io.uartRx, uartBufferSize, useSyncReadMem = true)
+    Queue.irrevocable(io.uart.rx, uartBufferSize, useSyncReadMem = true)
 
   // I feel sure there's a shorthand for this ...
   private val tx = Module(
     new Queue(UInt(8.W), uartBufferSize, useSyncReadMem = true),
   )
-  io.uartTx :<>= tx.io.deq
+  io.uart.tx :<>= tx.io.deq
 
   tx.io.enq.bits  := 0.U
   tx.io.enq.valid := false.B

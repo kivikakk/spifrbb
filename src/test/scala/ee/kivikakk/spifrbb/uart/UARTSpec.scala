@@ -24,7 +24,7 @@ class UARTSpec extends AnyFlatSpec {
       // Assert START and hold for one bit.
       c.pins.rx.poke(false.B)
 
-      c.rxIo.valid.expect(false.B)
+      c.io.rx.valid.expect(false.B)
 
       c.clock.step(3)
 
@@ -35,7 +35,7 @@ class UARTSpec extends AnyFlatSpec {
         i     <- 0 until 3
       } {
         c.pins.rx.poke(((input & (1 << bitIx)) != 0).B)
-        c.rxIo.valid.expect(false.B)
+        c.io.rx.valid.expect(false.B)
         c.clock.step()
       }
 
@@ -43,20 +43,20 @@ class UARTSpec extends AnyFlatSpec {
       c.pins.rx.poke(true.B)
 
       for { i <- 0 until 7 } {
-        c.rxIo.valid.expect(false.B)
+        c.io.rx.valid.expect(false.B)
         c.clock.step()
       }
 
       // Check received OK.
-      c.rxIo.ready.poke(true.B)
+      c.io.rx.ready.poke(true.B)
 
-      c.rxIo.valid.expect(true.B)
-      c.rxIo.bits.byte.expect(input)
+      c.io.rx.valid.expect(true.B)
+      c.io.rx.bits.byte.expect(input)
 
       // Ensure we can move to the next byte.
       c.clock.step()
-      c.rxIo.ready.poke(false.B)
-      c.rxIo.valid.expect(false.B)
+      c.io.rx.ready.poke(false.B)
+      c.io.rx.valid.expect(false.B)
     }
   }
 
@@ -68,13 +68,13 @@ class UARTSpec extends AnyFlatSpec {
 
       // Generate a byte and request it to be sent.
       val input = (new scala.util.Random).nextInt(256)
-      c.txIo.bits.poke(input.U)
-      c.txIo.valid.poke(true.B)
+      c.io.tx.bits.poke(input.U)
+      c.io.tx.valid.poke(true.B)
 
       c.pins.tx.expect(true.B)
 
       c.clock.step()
-      c.txIo.valid.poke(false.B)
+      c.io.tx.valid.poke(false.B)
 
       c.pins.tx.expect(true.B)
 

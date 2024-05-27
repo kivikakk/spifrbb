@@ -49,6 +49,8 @@ int main(int argc, char **argv) {
   std::mt19937 mt(rd());
   std::uniform_int_distribution<uint8_t> dist;
 
+  top.p_io__rx__bits__err.set(false);
+
   // Stackyem's default program echoes byte 3n+0, drops byte 3n+1, and echos
   // byte 3n+2 twice. Generate a bunch of random data and make sure it does
   // that.
@@ -57,24 +59,24 @@ int main(int argc, char **argv) {
   bool done = false;
   for (int i = 0; i < 10000 && !done; ++i) {
     uint8_t a = dist(mt);
-    top.p_io__uart__tx__bits.set(a);
-    top.p_io__uart__tx__valid.set(true);
+    top.p_io__rx__bits__byte.set(a);
+    top.p_io__rx__valid.set(true);
 
     step();
 
     uint8_t b = dist(mt);
-    top.p_io__uart__tx__bits.set(b);
-    top.p_io__uart__tx__valid.set(true);
+    top.p_io__rx__bits__byte.set(b);
+    top.p_io__rx__valid.set(true);
 
     step();
 
     uint8_t c = dist(mt);
-    top.p_io__uart__tx__bits.set(c);
-    top.p_io__uart__tx__valid.set(true);
+    top.p_io__rx__bits__byte.set(c);
+    top.p_io__rx__valid.set(true);
 
     step();
 
-    top.p_io__uart__tx__valid.set(false);
+    top.p_io__rx__valid.set(false);
 
     if (debug)
       std::cout << "a(" << (int)a << "), b(" << (int)b << "), c(" << (int)c
@@ -82,14 +84,14 @@ int main(int argc, char **argv) {
 
     step();
 
-    top.p_io__uart__rx__ready.set(true);
+    top.p_io__tx__ready.set(true);
 
     // 0: seen nothing. 1: seen 'a'. 2: seen 'c'. 3: seen 2nd 'c'.
     int progress = 0;
 
     for (int j = 0; j < 1000; ++j) {
-      if (top.p_io__uart__rx__valid) {
-        uint8_t val = top.p_io__uart__rx__bits.get<uint8_t>();
+      if (top.p_io__tx__valid) {
+        uint8_t val = top.p_io__tx__bits.get<uint8_t>();
         if (debug)
           std::cout << "got valid on j(" << j << "): val(" << (int)val << ")"
                     << std::endl;
@@ -99,7 +101,7 @@ int main(int argc, char **argv) {
           progress = 2;
         } else if (progress == 2 && val == c) {
           step(); // Step to ack before we reset ready.
-          top.p_io__uart__rx__ready.set(false);
+          top.p_io__tx__ready.set(false);
           progress = 3;
           break;
         } else {

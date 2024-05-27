@@ -1,12 +1,11 @@
 package ee.kivikakk.spifrbb
 
 import chisel3._
-import chisel3.experimental.ExtModule
+
+// TODO: val io = IO(new SPIFlashReaderIO { val clock = Input(Clock()) }).
+// Needs better blackbox gen in Chryse.
 
 class SPIFRBlackbox extends BlackBox {
-  // TODO: val io = IO(new SPIFlashReaderIO { val clock = Input(Clock()) }).
-  // Needs better blackbox gen in Chryse.
-
   val io = IO(new Bundle {
     val clock = Input(Clock())
 

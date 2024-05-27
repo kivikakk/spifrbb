@@ -10,7 +10,9 @@ import ee.hrzn.chryse.platform.cxxrtl.CXXRTLOptions
 import ee.hrzn.chryse.platform.cxxrtl.CXXRTLPlatform
 import ee.hrzn.chryse.platform.ice40.IceBreakerPlatform
 import ee.hrzn.chryse.tasks.BaseTask
+import ee.kivikakk.spifrbb.uart.RXOut
 import ee.kivikakk.spifrbb.uart.UART
+import ee.kivikakk.spifrbb.uart.UARTIO
 import org.rogach.scallop._
 
 import java.io.FileOutputStream
@@ -78,8 +80,7 @@ class Top(implicit platform: Platform) extends Module {
       plat.resources.uart.tx := uart.pins.tx
       uart.pins.rx           := plat.resources.uart.rx
 
-      stackyem.io.uartRx :<>= uart.rxIo
-      uart.txIo :<>= stackyem.io.uartTx
+      stackyem.io.uart :<>= uart.io
 
       plat.resources.spiFlash.cs    := spifr.pins.cs
       plat.resources.spiFlash.clock := spifr.pins.clock
@@ -90,29 +91,10 @@ class Top(implicit platform: Platform) extends Module {
 
     case _: CXXRTLWhiteboxPlatform =>
       val spifr = Module(new SPIFlashReader)
-      spifr.io.req.bits.addr := spifrio.req.bits.addr
-      spifr.io.req.bits.len  := spifrio.req.bits.len
-      spifr.io.req.valid     := spifrio.req.valid
-      spifrio.req.ready      := spifr.io.req.ready
-      spifrio.res.bits       := spifr.io.res.bits
-      spifrio.res.valid      := spifr.io.res.valid
-      spifr.io.res.ready     := spifrio.res.ready
+      spifrio :<>= spifr.io
 
-      // We're not measuring the UART, so expose the UART module interface
-      // directly instead of the pins. Skip the error part of the RX interface.
-      // Note that we flip the names so they make sense from CXXRTL's point of
-      // view — this is *its* IO, not ours.
-      val io = IO(new Bundle {
-        val uart_tx = Flipped(Decoupled(UInt(8.W)))
-        val uart_rx = Decoupled(UInt(8.W))
-      })
-
-      io.uart_rx :<>= stackyem.io.uartTx
-
-      stackyem.io.uartRx.valid     := io.uart_tx.valid
-      stackyem.io.uartRx.bits.byte := io.uart_tx.bits
-      stackyem.io.uartRx.bits.err  := false.B
-      io.uart_tx.ready             := stackyem.io.uartRx.ready
+      val io = IO(Flipped(new UARTIO))
+      stackyem.io.uart :<>= io
 
       val wb = Module(new SPIFRWhitebox)
       wb.io.clock     := clock
@@ -131,21 +113,8 @@ class Top(implicit platform: Platform) extends Module {
       spifrio.res.valid      := spifr.io.res_valid
       spifr.io.res_ready     := spifrio.res.ready
 
-      // We're not measuring the UART, so expose the UART module interface
-      // directly instead of the pins. Skip the error part of the RX interface.
-      // Note that we flip the names so they make sense from CXXRTL's point of
-      // view — this is *its* IO, not ours.
-      val io = IO(new Bundle {
-        val uart_tx = Flipped(Decoupled(UInt(8.W)))
-        val uart_rx = Decoupled(UInt(8.W))
-      })
-
-      io.uart_rx :<>= stackyem.io.uartTx
-
-      stackyem.io.uartRx.valid     := io.uart_tx.valid
-      stackyem.io.uartRx.bits.byte := io.uart_tx.bits
-      stackyem.io.uartRx.bits.err  := false.B
-      io.uart_tx.ready             := stackyem.io.uartRx.ready
+      val io = IO(Flipped(new UARTIO))
+      stackyem.io.uart :<>= io
 
     case _ =>
       throw new NotImplementedError(s"platform ${platform.id} not supported")

@@ -5,6 +5,7 @@ import chisel3.simulator.EphemeralSimulator._
 import chisel3.util._
 import ee.hrzn.chryse.platform.Platform
 import ee.kivikakk.spifrbb.uart.RXOut
+import ee.kivikakk.spifrbb.uart.UARTIO
 import org.scalatest.flatspec.AnyFlatSpec
 
 class StackyemStaticMem(imem: Seq[Data], stackSize: Int) extends Module {
@@ -12,12 +13,8 @@ class StackyemStaticMem(imem: Seq[Data], stackSize: Int) extends Module {
     new Stackyem(imemSize = imem.length, stackSize = stackSize),
   )
 
-  val io = IO(new Bundle {
-    val uartTx = Decoupled(UInt(8.W))
-    val uartRx = Flipped(Decoupled(new RXOut))
-  })
-  io.uartTx :<>= stackyem.io.uartTx
-  stackyem.io.uartRx :<>= io.uartRx
+  val io = IO(Flipped(new UARTIO))
+  stackyem.io.uart :<>= io
 
   val debugIo = IO(
     new StackyemDebugIO(imemSize = imem.length, stackSize = stackSize),
@@ -66,9 +63,9 @@ class StackyemSpec extends AnyFlatSpec {
       c.debugIo.pc.expect(1, "pc wait")
       c.debugIo.sp.expect(0, "sp wait")
 
-      c.io.uartRx.bits.byte.poke(0xac)
-      c.io.uartRx.bits.err.poke(false)
-      c.io.uartRx.valid.poke(true)
+      c.io.rx.bits.byte.poke(0xac)
+      c.io.rx.bits.err.poke(false)
+      c.io.rx.valid.poke(true)
 
       c.clock.step()
       c.debugIo.pc.expect(1, "pc wait")
@@ -105,23 +102,23 @@ class StackyemSpec extends AnyFlatSpec {
       c.debugIo.pc.expect(2, "pc adv")
       c.debugIo.sp.expect(1, "sp adv")
       c.debugIo.stack(0).expect(0x45, "stack set")
-      c.io.uartTx.bits.expect(0, "uart tx bits wait")
-      c.io.uartTx.valid.expect(0, "uart tx valid wait")
+      c.io.tx.bits.expect(0, "uart tx bits wait")
+      c.io.tx.valid.expect(0, "uart tx valid wait")
 
       c.clock.step(2)
-      c.io.uartTx.bits.expect(0x45, "uart tx bits set")
-      c.io.uartTx.valid.expect(1, "uart tx valid set")
+      c.io.tx.bits.expect(0x45, "uart tx bits set")
+      c.io.tx.valid.expect(1, "uart tx valid set")
 
       c.clock.step()
-      c.io.uartTx.bits.expect(0x45, "uart tx bits still set")
-      c.io.uartTx.valid.expect(1, "uart tx valid still set")
+      c.io.tx.bits.expect(0x45, "uart tx bits still set")
+      c.io.tx.valid.expect(1, "uart tx valid still set")
 
-      c.io.uartTx.ready.poke(true)
+      c.io.tx.ready.poke(true)
 
       c.clock.step()
-      c.io.uartTx.ready.poke(false)
-      c.io.uartTx.bits.expect(0, "uart tx bits reset")
-      c.io.uartTx.valid.expect(0, "uart tx valid reset")
+      c.io.tx.ready.poke(false)
+      c.io.tx.bits.expect(0, "uart tx bits reset")
+      c.io.tx.valid.expect(0, "uart tx valid reset")
     }
   }
 }
