@@ -10,8 +10,6 @@
 namespace cxxrtl_design {
 
 struct bb_p_SPIFRBlackbox_impl : public bb_p_SPIFRBlackbox {
-  // Similar to bb_p_i2c_impl::TICKS_TO_WAIT, but between each cycle with valid
-  // data.
   const uint8_t COUNTDOWN_BETWEEN_BYTES = 2u;
 
   enum {
