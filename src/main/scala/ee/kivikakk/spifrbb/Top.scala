@@ -116,13 +116,18 @@ object Top extends ChryseApp {
     CXXRTLOptions(
       platforms = Seq(new CXXRTLWhiteboxPlatform, new CXXRTLBlackboxPlatform),
       blackboxes = Seq(classOf[SPIFRWhitebox], classOf[SPIFRBlackbox]),
-      buildHooks = Seq(generateRom.apply),
+      buildHooks = Seq(rom.generate),
     ),
   )
 
-  private val romFlashBase = 0x80_0000
-  object generateRom extends BaseTask {
-    def apply(): String = {
+  object rom extends ChryseSubcommand("rom") with BaseTask {
+    banner("Build the Stackyem ROM image, and optionally to a file.")
+    val program = opt[Boolean](descr = "Program the ROM onto the iCEBreaker")
+
+    // TODO: multiplatform support.
+    private val romFlashBase = 0x80_0000
+
+    def generate(): String = {
       Files.createDirectories(Paths.get(buildDir))
 
       val content = Stackyem.DEFAULT_IMEM_INIT.map(_.litValue.toByte)
@@ -142,15 +147,9 @@ object Top extends ChryseApp {
 
       binPath
     }
-  }
-
-  object rom extends ChryseSubcommand("rom") with BaseTask {
-    banner("Build the Stackyem ROM image, and optionally to a file.")
-    val program = opt[Boolean](descr = "Program the ROM onto the iCEBreaker")
-    // TODO: multiplatform support.
 
     def execute() = {
-      val binPath = generateRom()
+      val binPath = generate()
       if (rom.program()) {
         runCmd(
           CmdStepProgram,
