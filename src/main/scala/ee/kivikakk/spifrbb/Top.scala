@@ -119,6 +119,7 @@ object Top extends ChryseApp {
       buildHooks = Seq(rom.generate),
     ),
   )
+  override val additionalSubcommands = Seq(rom)
 
   object rom extends ChryseSubcommand("rom") with BaseTask {
     banner("Build the Stackyem ROM image, and optionally to a file.")
@@ -158,5 +159,4 @@ object Top extends ChryseApp {
       }
     }
   }
-  override val additionalSubcommands = Seq(rom)
 }
