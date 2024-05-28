@@ -32,22 +32,22 @@ struct bb_p_SPIFRWhitebox_impl : public bb_p_SPIFRWhitebox {
     this->addr = 0u;
     this->bit = 0u;
 
-    p_cipo = wire<1>{0u};
+    p_io__cipo = wire<1>{0u};
   }
 
   bool eval(performer *performer) override {
     bool converged = true;
-    bool posedge_p_clock = this->posedge_p_clock();
+    bool posedge_p_clock = this->posedge_p_io__clock();
 
     if (posedge_p_clock) {
-      p_cipo.next = value<1>{0u};
+      p_io__cipo.next = value<1>{0u};
 
       uint32_t srnext =
-          ((this->sr & 0x7fffffffu) << 1) | p_copi.get<uint32_t>();
+          ((this->sr & 0x7fffffffu) << 1) | p_io__copi.get<uint32_t>();
 
       switch (this->state) {
       case STATE_IDLE: {
-        if (p_cs) {
+        if (p_io__cs) {
           this->state = STATE_SELECTED_POWER_DOWN;
         }
         break;
@@ -59,13 +59,13 @@ struct bb_p_SPIFRWhitebox_impl : public bb_p_SPIFRWhitebox {
         break;
       }
       case STATE_SELECTED_POWERING_UP_NEEDS_DESELECT: {
-        if (!p_cs) {
+        if (!p_io__cs) {
           this->state = STATE_DESELECTED_POWERED_UP;
         }
         break;
       }
       case STATE_DESELECTED_POWERED_UP: {
-        if (p_cs) {
+        if (p_io__cs) {
           this->state = STATE_SELECTED_POWERED_UP;
         }
         break;
@@ -89,16 +89,16 @@ struct bb_p_SPIFRWhitebox_impl : public bb_p_SPIFRWhitebox {
             this->bit = 0;
             ++this->addr;
           }
-          p_cipo.next = value<1>{bit};
+          p_io__cipo.next = value<1>{bit};
         }
-        if (!p_cs) {
+        if (!p_io__cs) {
           this->state = STATE_IDLE;
         }
         break;
       }
       }
 
-      if (p_cs) {
+      if (p_io__cs) {
         this->sr = srnext;
         ++this->edges;
       } else {

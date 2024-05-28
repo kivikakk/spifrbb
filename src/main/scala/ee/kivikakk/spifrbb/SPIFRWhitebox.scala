@@ -1,8 +1,9 @@
 package ee.kivikakk.spifrbb
 
 import chisel3._
+import chisel3.experimental.ExtModule
 
-class SPIFRWhitebox extends BlackBox {
+class SPIFRWhitebox extends ExtModule {
   val io = IO(new Bundle {
     val clock = Input(Clock())
     val cs    = Input(Bool())

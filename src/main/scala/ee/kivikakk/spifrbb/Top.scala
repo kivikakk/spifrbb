@@ -19,8 +19,6 @@ import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.Paths
 
-// TODO: learn more about how to use Irrevocable right.
-
 class Top(implicit platform: Platform) extends Module {
   override def desiredName = "spifrbb"
 
@@ -68,9 +66,6 @@ class Top(implicit platform: Platform) extends Module {
     }
   }
 
-  // TODO NEXT: put an enable on stackyem (start it off in an idle state),
-  // load into imem from SPIFR.
-
   platform match {
     case plat: IceBreakerPlatform =>
       val uart = Module(new UART)
@@ -105,15 +100,8 @@ class Top(implicit platform: Platform) extends Module {
       stackyem.io.uart :<>= io
 
       val spifr = Module(new SPIFRBlackbox)
-      // XXX: improve blackbox generation.
-      spifr.io.clock         := clock
-      spifr.io.req_bits_addr := spifrcon.req.bits.addr
-      spifr.io.req_bits_len  := spifrcon.req.bits.len
-      spifr.io.req_valid     := spifrcon.req.valid
-      spifrcon.req.ready     := spifr.io.req_ready
-      spifrcon.res.bits      := spifr.io.res_bits
-      spifrcon.res.valid     := spifr.io.res_valid
-      spifr.io.res_ready     := spifrcon.res.ready
+      spifr.clock := clock
+      spifrcon :<>= spifr.io
 
     case _ =>
       throw new NotImplementedError(s"platform ${platform.id} not supported")
