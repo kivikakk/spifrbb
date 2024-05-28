@@ -116,37 +116,46 @@ object Top extends ChryseApp {
     CXXRTLOptions(
       platforms = Seq(new CXXRTLWhiteboxPlatform, new CXXRTLBlackboxPlatform),
       blackboxes = Seq(classOf[SPIFRWhitebox], classOf[SPIFRBlackbox]),
+      buildHooks = Seq(generateRom.apply),
     ),
   )
+
+  private val romFlashBase = 0x80_0000
+  object generateRom extends BaseTask {
+    def apply(): String = {
+      Files.createDirectories(Paths.get(buildDir))
+
+      val content = Stackyem.DEFAULT_IMEM_INIT.map(_.litValue.toByte)
+      val binPath = s"$buildDir/rom.bin"
+      val fos     = new FileOutputStream(binPath)
+      fos.write(content.toArray, 0, content.length)
+      fos.close()
+      println(s"wrote $binPath")
+
+      writePath(s"$buildDir/rom.cc") { wr =>
+        wr.print("const uint8_t spi_flash_content[] = \"");
+        wr.print(content.map(b => f"\\$b%03o").mkString)
+        wr.println("\";");
+        wr.println(f"const uint32_t spi_flash_base = 0x$romFlashBase%x;");
+        wr.println(f"const uint32_t spi_flash_length = 0x${content.length}%x;");
+      }
+
+      binPath
+    }
+  }
 
   object rom extends ChryseSubcommand("rom") with BaseTask {
     banner("Build the Stackyem ROM image, and optionally to a file.")
     val program = opt[Boolean](descr = "Program the ROM onto the iCEBreaker")
     // TODO: multiplatform support.
 
-    private val flashBase = 0x80_0000;
-
     def execute() = {
-      Files.createDirectories(Paths.get(buildDir))
-
-      val content = Stackyem.DEFAULT_IMEM_INIT.map(_.litValue.toByte)
-      val path    = s"$buildDir/rom.bin"
-      val fos     = new FileOutputStream(path)
-      fos.write(content.toArray, 0, content.length)
-      fos.close()
-      println(s"wrote $path")
-
-      // HACK: somehow hook this to the cxxsim action
-      writePath(s"$buildDir/rom.cc") { wr =>
-        wr.print("const uint8_t spi_flash_content[] = \"");
-        wr.print(content.map(b => f"\\$b%03o").mkString)
-        wr.println("\";");
-        wr.println(f"const uint32_t spi_flash_base = 0x$flashBase%x;");
-        wr.println(f"const uint32_t spi_flash_length = 0x${content.length}%x;");
-      }
-
+      val binPath = generateRom()
       if (rom.program()) {
-        runCmd(CmdStepProgram, Seq("iceprog", "-o", f"0x$flashBase%x", path))
+        runCmd(
+          CmdStepProgram,
+          Seq("iceprog", "-o", f"0x$romFlashBase%x", binPath),
+        )
       }
     }
   }
