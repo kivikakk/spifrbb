@@ -4,10 +4,12 @@ import _root_.circt.stage.ChiselStage
 import chisel3._
 import chisel3.util._
 import ee.hrzn.chryse.ChryseApp
-import ee.hrzn.chryse.ChryseSubcommand
+import ee.hrzn.chryse.platform.ElaboratablePlatform
 import ee.hrzn.chryse.platform.Platform
 import ee.hrzn.chryse.platform.cxxrtl.CXXRTLOptions
 import ee.hrzn.chryse.platform.cxxrtl.CXXRTLPlatform
+import ee.hrzn.chryse.platform.ecp5.LFE5U_45F
+import ee.hrzn.chryse.platform.ecp5.ULX3SPlatform
 import ee.hrzn.chryse.platform.ice40.IceBreakerPlatform
 import ee.hrzn.chryse.tasks.BaseTask
 import ee.kivikakk.spifrbb.uart.RXOut
@@ -82,6 +84,22 @@ class Top(implicit platform: Platform) extends Module {
       plat.resources.spiFlash.wp    := false.B
       plat.resources.spiFlash.hold  := false.B
 
+    case plat: ULX3SPlatform =>
+      val uart = Module(new UART)
+      plat.resources.uart.tx := uart.pins.tx
+      uart.pins.rx           := plat.resources.uart.rx
+      stackyem.io.uart :<>= uart.io
+      plat.resources.uartTxEnable := true.B
+
+      val spifr = Module(new SPIFlashReader)
+      spifrcon :<>= spifr.io
+      plat.resources.spiFlash.cs    := spifr.pins.cs
+      plat.resources.spiFlash.clock := spifr.pins.clock
+      plat.resources.spiFlash.copi  := spifr.pins.copi
+      spifr.pins.cipo               := plat.resources.spiFlash.cipo
+      plat.resources.spiFlash.wp    := false.B
+      plat.resources.spiFlash.hold  := false.B
+
     case _: CXXRTLWhiteboxPlatform =>
       val io = IO(Flipped(new UARTIO))
       stackyem.io.uart :<>= io
@@ -108,10 +126,19 @@ class Top(implicit platform: Platform) extends Module {
   }
 }
 
+trait PlatformSpecific { var romFlashBase: BigInt }
+
 object Top extends ChryseApp {
   override val name                                  = "spifrbb"
   override def genTop()(implicit platform: Platform) = new Top
-  override val targetPlatforms                       = Seq(IceBreakerPlatform(ubtnReset = true))
+  override val targetPlatforms = Seq(
+    new IceBreakerPlatform(ubtnReset = true) with PlatformSpecific {
+      var romFlashBase = BigInt("00800000", 16)
+    },
+    new ULX3SPlatform(LFE5U_45F) with PlatformSpecific {
+      var romFlashBase = BigInt("00100000", 16)
+    },
+  )
   override val cxxrtlOptions = Some(
     CXXRTLOptions(
       platforms = Seq(new CXXRTLWhiteboxPlatform, new CXXRTLBlackboxPlatform),
@@ -121,14 +148,15 @@ object Top extends ChryseApp {
   )
   override val additionalSubcommands = Seq(rom)
 
-  object rom extends ChryseSubcommand("rom") with BaseTask {
+  object rom
+      extends this.ChryseSubcommand("rom", addBoardOption = true)
+      with BaseTask {
     banner("Build the Stackyem ROM image, and optionally to a file.")
     val program = opt[Boolean](descr = "Program the ROM onto the iCEBreaker")
 
-    // TODO: multiplatform support.
-    private val romFlashBase = 0x80_0000
+    def generate(platform: ElaboratablePlatform): String = {
+      val romFlashBase = platform.asInstanceOf[PlatformSpecific].romFlashBase
 
-    def generate(): String = {
       Files.createDirectories(Paths.get(buildDir))
 
       val content = Stackyem.DEFAULT_IMEM_INIT.map(_.litValue.toByte)
@@ -150,7 +178,14 @@ object Top extends ChryseApp {
     }
 
     def execute() = {
-      val binPath = generate()
+      val platform =
+        if (targetPlatforms.length > 1)
+          targetPlatforms.find(_.id == this.board.get()).get
+        else
+          targetPlatforms(0)
+
+      val binPath      = generate(platform)
+      val romFlashBase = platform.asInstanceOf[PlatformSpecific].romFlashBase
       if (rom.program()) {
         runCmd(
           CmdStepProgram,
