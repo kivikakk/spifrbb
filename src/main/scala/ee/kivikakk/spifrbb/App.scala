@@ -16,6 +16,8 @@ import java.nio.file.Paths
 
 trait PlatformSpecific {
   var romFlashBase: BigInt
+
+  def programROM(binPath: String): Unit
 }
 
 object App extends ChryseApp {
@@ -24,9 +26,42 @@ object App extends ChryseApp {
   override val targetPlatforms = Seq(
     new IceBreakerPlatform(ubtnReset = true) with PlatformSpecific {
       var romFlashBase = BigInt("00800000", 16)
+
+      def programROM(binPath: String) =
+        programROMImpl(this.romFlashBase, binPath)
+
+      object programROMImpl extends BaseTask {
+        def apply(romFlashBase: BigInt, binPath: String): Unit = {
+          runCmd(
+            CmdStepProgram,
+            Seq("iceprog", "-o", f"0x$romFlashBase%x", binPath),
+          )
+        }
+      }
     },
     new ULX3SPlatform(LFE5U_45F) with PlatformSpecific {
       var romFlashBase = BigInt("00100000", 16)
+
+      def programROM(binPath: String) =
+        programROMImpl(this.romFlashBase, binPath)
+
+      object programROMImpl extends BaseTask {
+        def apply(romFlashBase: BigInt, binPath: String): Unit = {
+          runCmd(
+            CmdStepProgram,
+            Seq(
+              "openFPGALoader",
+              "-v",
+              "-b",
+              "ulx3s",
+              "-f",
+              "-o",
+              f"0x$romFlashBase%x",
+              binPath,
+            ),
+          )
+        }
+      }
     },
   )
   override val cxxrtlOptions = Some(
@@ -82,18 +117,13 @@ object App extends ChryseApp {
       if (rom.program.isDefined) {
         val platform =
           if (targetPlatforms.length > 1)
-            targetPlatforms.find(_.id == rom.program().asInstanceOf[String]).get
+            targetPlatforms
+              .find(_.id == rom.program().asInstanceOf[String])
+              .get
           else
             targetPlatforms(0)
 
-        val romFlashBase = platform.asInstanceOf[PlatformSpecific].romFlashBase
-
-        // TODO/NEXT: plat-specific.
-        // openFPGALoader -v -b ulx3s -f -o 0x100000 build/rom.bin
-        runCmd(
-          CmdStepProgram,
-          Seq("iceprog", "-o", f"0x$romFlashBase%x", binPath),
-        )
+        platform.asInstanceOf[PlatformSpecific].programROM(binPath)
       }
     }
   }
