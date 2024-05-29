@@ -89,7 +89,8 @@ class Top(implicit platform: Platform) extends Module {
 
     case plat: ULX3SPlatform =>
       // Something a bit wonky: it seems to get a byte before we actually write
-      // to it.
+      // to it. Experimentally that byte is FF, or more likely, a read error.
+      // Seems fixable — maybe the UART briefly reads low before it goes high.
       val uart = Module(new UART)
       plat.resources.uart.tx := uart.pins.tx
       uart.pins.rx           := plat.resources.uart.rx

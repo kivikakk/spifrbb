@@ -14,9 +14,9 @@ import scala.language.implicitConversions
 object Stackyem {
   val DEFAULT_IMEM_INIT = Seq(
     Instruction.ReadUart,
-    Instruction.WriteUart,
     Instruction.ReadUart,
-    Instruction.Drop,
+    Instruction.WriteUart,
+    Instruction.WriteUart,
     Instruction.ReadUart,
     Instruction.Dup,
     Instruction.WriteUart,
