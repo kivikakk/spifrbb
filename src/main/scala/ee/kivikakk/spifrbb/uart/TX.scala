@@ -31,7 +31,7 @@ class TX(private val divisor: Int) extends Module {
     }
     is(State.sTx) {
       pin      := shiftReg(0)
-      timerReg := timerReg - 1.U // TODO: cheaper here or top level?
+      timerReg := timerReg - 1.U
       when(timerReg === 0.U) {
         timerReg   := (divisor - 1).U
         counterReg := counterReg - 1.U
