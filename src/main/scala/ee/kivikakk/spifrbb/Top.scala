@@ -166,6 +166,7 @@ object Top extends ChryseApp {
       fos.close()
       println(s"wrote $binPath")
 
+      // platform arg is only used for CXXRTL soooooooo TOD1
       writePath(s"$buildDir/rom.cc") { wr =>
         wr.print("const uint8_t spi_flash_content[] = \"");
         wr.print(content.map(b => f"\\$b%03o").mkString)
