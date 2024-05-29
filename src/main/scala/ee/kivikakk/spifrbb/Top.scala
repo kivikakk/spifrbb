@@ -34,10 +34,13 @@ class Top(implicit platform: Platform) extends Module {
   val spifrcon = Wire(new SPIFlashReaderIO)
 
   val reqlen = Stackyem.DEFAULT_IMEM_INIT.length
-  spifrcon.req.bits.addr := 0x80_0000.U
-  spifrcon.req.bits.len  := reqlen.U
-  spifrcon.req.valid     := false.B
-  spifrcon.res.ready     := false.B
+  spifrcon.req.bits.addr := platform
+    .asInstanceOf[PlatformSpecific]
+    .romFlashBase
+    .U
+  spifrcon.req.bits.len := reqlen.U
+  spifrcon.req.valid    := false.B
+  spifrcon.res.ready    := false.B
 
   val our_addr = RegInit(0.U(unsignedBitLength(imemSize - 1).W))
   wrp.address := our_addr
@@ -85,6 +88,8 @@ class Top(implicit platform: Platform) extends Module {
       plat.resources.spiFlash.hold  := false.B
 
     case plat: ULX3SPlatform =>
+      // Something a bit wonky: it seems to get a byte before we actually write
+      // to it.
       val uart = Module(new UART)
       plat.resources.uart.tx := uart.pins.tx
       uart.pins.rx           := plat.resources.uart.rx
@@ -99,6 +104,22 @@ class Top(implicit platform: Platform) extends Module {
       spifr.pins.cipo               := plat.resources.spiFlash.cipo
       plat.resources.spiFlash.wp    := false.B
       plat.resources.spiFlash.hold  := false.B
+
+      val wonk = RegInit(false.B)
+      val ctr  = RegInit(10_000_000.U)
+      when(ctr === 0.U) {
+        ctr  := 10_000_000.U
+        wonk := ~wonk
+      }.otherwise(ctr := ctr - 1.U)
+
+      plat.resources.led0 := wonk
+      plat.resources.led1 := ~wonk
+      plat.resources.led2 := wonk
+      plat.resources.led3 := ~wonk
+      plat.resources.led4 := wonk
+      plat.resources.led5 := ~wonk
+      plat.resources.led6 := wonk
+      plat.resources.led7 := ~wonk
 
     case _: CXXRTLWhiteboxPlatform =>
       val io = IO(Flipped(new UARTIO))
