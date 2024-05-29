@@ -140,6 +140,10 @@ class Top(implicit platform: Platform) extends Module {
       spifr.clock := clock
       spifrcon :<>= spifr.io
 
+      // HACK: work around CXXRTL bug. PR here but who knows if it'll get
+      // merged: https://github.com/YosysHQ/yosys/pull/4417
+      dontTouch(spifrcon.req.ready)
+
     case _ =>
       throw new NotImplementedError(s"platform ${platform.id} not supported")
   }
