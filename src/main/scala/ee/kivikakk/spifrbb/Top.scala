@@ -88,9 +88,6 @@ class Top(implicit platform: Platform) extends Module {
       plat.resources.spiFlash.hold  := false.B
 
     case plat: ULX3SPlatform =>
-      // Something a bit wonky: it seems to get a byte before we actually write
-      // to it. Experimentally that byte is FF, or more likely, a read error.
-      // Seems fixable — maybe the UART briefly reads low before it goes high.
       val uart = Module(new UART)
       plat.resources.uart.tx := uart.pins.tx
       uart.pins.rx           := plat.resources.uart.rx
@@ -188,7 +185,7 @@ object Top extends ChryseApp {
       fos.close()
       println(s"wrote $binPath")
 
-      // platform arg is only used for CXXRTL soooooooo TOD1
+      // TODO/NEXT: platform arg is only used for CXXRTL soooooooo
       writePath(s"$buildDir/rom.cc") { wr =>
         wr.print("const uint8_t spi_flash_content[] = \"");
         wr.print(content.map(b => f"\\$b%03o").mkString)
@@ -210,6 +207,8 @@ object Top extends ChryseApp {
       val binPath      = generate(platform)
       val romFlashBase = platform.asInstanceOf[PlatformSpecific].romFlashBase
       if (rom.program()) {
+        // TODO/NEXT: plat-specific.
+        // openFPGALoader -v -b ulx3s -f -o 0x100000 build/rom.bin
         runCmd(
           CmdStepProgram,
           Seq("iceprog", "-o", f"0x$romFlashBase%x", binPath),
