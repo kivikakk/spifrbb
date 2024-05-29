@@ -98,14 +98,14 @@ class Top(implicit platform: Platform) extends Module {
         wonk := ~wonk
       }.otherwise(ctr := ctr - 1.U)
 
-      plat.resources.led0 := wonk
-      plat.resources.led1 := ~wonk
-      plat.resources.led2 := wonk
-      plat.resources.led3 := ~wonk
-      plat.resources.led4 := wonk
-      plat.resources.led5 := ~wonk
-      plat.resources.led6 := wonk
-      plat.resources.led7 := ~wonk
+      plat.resources.leds(0) := wonk
+      plat.resources.leds(1) := ~wonk
+      plat.resources.leds(2) := wonk
+      plat.resources.leds(3) := ~wonk
+      plat.resources.leds(4) := wonk
+      plat.resources.leds(5) := ~wonk
+      plat.resources.leds(6) := wonk
+      plat.resources.leds(7) := ~wonk
 
     case _: CXXRTLWhiteboxPlatform =>
       val io = IO(Flipped(new UARTIO))
