@@ -1,25 +1,13 @@
 package ee.kivikakk.spifrbb
 
-import _root_.circt.stage.ChiselStage
 import chisel3._
 import chisel3.util._
-import ee.hrzn.chryse.ChryseApp
-import ee.hrzn.chryse.platform.ElaboratablePlatform
 import ee.hrzn.chryse.platform.Platform
-import ee.hrzn.chryse.platform.cxxrtl.CXXRTLOptions
 import ee.hrzn.chryse.platform.cxxrtl.CXXRTLPlatform
-import ee.hrzn.chryse.platform.ecp5.LFE5U_45F
 import ee.hrzn.chryse.platform.ecp5.ULX3SPlatform
 import ee.hrzn.chryse.platform.ice40.IceBreakerPlatform
-import ee.hrzn.chryse.tasks.BaseTask
-import ee.kivikakk.spifrbb.uart.RXOut
 import ee.kivikakk.spifrbb.uart.UART
 import ee.kivikakk.spifrbb.uart.UARTIO
-import org.rogach.scallop._
-
-import java.io.FileOutputStream
-import java.nio.file.Files
-import java.nio.file.Paths
 
 class Top(implicit platform: Platform) extends Module {
   override def desiredName = "spifrbb"
@@ -146,78 +134,5 @@ class Top(implicit platform: Platform) extends Module {
 
     case _ =>
       throw new NotImplementedError(s"platform ${platform.id} not supported")
-  }
-}
-
-trait PlatformSpecific { var romFlashBase: BigInt }
-
-object Top extends ChryseApp {
-  override val name                                  = "spifrbb"
-  override def genTop()(implicit platform: Platform) = new Top
-  override val targetPlatforms = Seq(
-    new IceBreakerPlatform(ubtnReset = true) with PlatformSpecific {
-      var romFlashBase = BigInt("00800000", 16)
-    },
-    new ULX3SPlatform(LFE5U_45F) with PlatformSpecific {
-      var romFlashBase = BigInt("00100000", 16)
-    },
-  )
-  override val cxxrtlOptions = Some(
-    CXXRTLOptions(
-      platforms = Seq(new CXXRTLWhiteboxPlatform, new CXXRTLBlackboxPlatform),
-      blackboxes = Seq(classOf[SPIFRWhitebox], classOf[SPIFRBlackbox]),
-      buildHooks = Seq(rom.generate),
-    ),
-  )
-  override val additionalSubcommands = Seq(rom)
-
-  object rom
-      extends this.ChryseSubcommand("rom", addBoardOption = true)
-      with BaseTask {
-    banner("Build the Stackyem ROM image, and optionally to a file.")
-    val program = opt[Boolean](descr = "Program the ROM onto the iCEBreaker")
-
-    def generate(platform: ElaboratablePlatform): String = {
-      val romFlashBase = platform.asInstanceOf[PlatformSpecific].romFlashBase
-
-      Files.createDirectories(Paths.get(buildDir))
-
-      val content = Stackyem.DEFAULT_IMEM_INIT.map(_.litValue.toByte)
-      val binPath = s"$buildDir/rom.bin"
-      val fos     = new FileOutputStream(binPath)
-      fos.write(content.toArray, 0, content.length)
-      fos.close()
-      println(s"wrote $binPath")
-
-      // TODO/NEXT: platform arg is only used for CXXRTL soooooooo
-      writePath(s"$buildDir/rom.cc") { wr =>
-        wr.print("const uint8_t spi_flash_content[] = \"");
-        wr.print(content.map(b => f"\\$b%03o").mkString)
-        wr.println("\";");
-        wr.println(f"const uint32_t spi_flash_base = 0x$romFlashBase%x;");
-        wr.println(f"const uint32_t spi_flash_length = 0x${content.length}%x;");
-      }
-
-      binPath
-    }
-
-    def execute() = {
-      val platform =
-        if (targetPlatforms.length > 1)
-          targetPlatforms.find(_.id == this.board.get()).get
-        else
-          targetPlatforms(0)
-
-      val binPath      = generate(platform)
-      val romFlashBase = platform.asInstanceOf[PlatformSpecific].romFlashBase
-      if (rom.program()) {
-        // TODO/NEXT: plat-specific.
-        // openFPGALoader -v -b ulx3s -f -o 0x100000 build/rom.bin
-        runCmd(
-          CmdStepProgram,
-          Seq("iceprog", "-o", f"0x$romFlashBase%x", binPath),
-        )
-      }
-    }
   }
 }
