@@ -111,6 +111,8 @@ class Stackyem(
         state := State.sImm
       }.elsewhen(insn === Instruction.ResetPC) {
         pc := 0.U
+      }.elsewhen(insn === Instruction.HCF) {
+        state := State.sErr
       }.otherwise {
         state := State.sErr
       }
@@ -139,6 +141,7 @@ object Instruction extends ChiselEnum {
   val Dup       = Value(0x03.U)
   val Drop      = Value(0x04.U)
   val Imm       = Value(0x05.U)
+  val HCF       = Value(0xfe.U)
   val ResetPC   = Value(0xff.U)
 
   implicit def instruction2UInt(insn: Instruction.Type): UInt =
