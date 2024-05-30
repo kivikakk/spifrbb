@@ -16,6 +16,8 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Chryse
-      uses: chryse-hdl/setup-chryse-action@v2.1
+      uses: chryse-hdl/setup-chryse-action@v2.2
+      with:
+        ref: v0.1.0
 
     - uses: scalacenter/sbt-dependency-submission@v2
