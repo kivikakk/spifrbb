@@ -23,9 +23,8 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Chryse
-      uses: chryse-hdl/setup-chryse-action@v2.2
+      uses: chryse-hdl/setup-chryse-action@v2.3
       with:
-        ref: v0.1.0
         install-oss-cad-suite: true
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
